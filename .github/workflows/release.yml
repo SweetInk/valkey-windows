@@ -113,6 +113,10 @@ jobs:
           path: auto-win-msvc
         continue-on-error: true
 
+      - name: Fix auto-win-msvc sources and patch contexts
+        working-directory: build-repo
+        run: cmake -P patch_auto_win_msvc.cmake
+
       - name: Apply Windows Build Patch
         working-directory: valkey
         run: |

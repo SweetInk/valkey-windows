@@ -876,7 +876,7 @@ index 9e52edcf5..c15883b7c 100644
  add_dependencies(valkey-server generate_commands_def)
  add_dependencies(valkey-server generate_fmtargs_h)
  add_dependencies(valkey-server release_header)
-@@ -75,15 +80,5 @@ valkey_build_and_install_bin(valkey-cli "${VALKEY_CLI_SRCS}" "${VALKEY_SERVER_LD
+@@ -75,15 +80,6 @@ valkey_build_and_install_bin(valkey-cli "${VALKEY_CLI_SRCS}" "${VALKEY_SERVER_LD
  add_dependencies(valkey-cli generate_commands_def)
  add_dependencies(valkey-cli generate_fmtargs_h)
  
