@@ -1,22 +1,35 @@
-file(READ "auto-win-msvc/posix-sys-resource/src/posix-sys-resource.c" CONTENT)
+# Detect layout: in local builds (release.bat), auto-win-msvc and valkey are
+# inside the build-repo dir. In CI, they are siblings at the workspace root.
+set(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
+if(EXISTS "${ROOT_DIR}/auto-win-msvc")
+    # Local layout: everything is inside the script's directory
+    set(AUTO_WIN_MSVC_DIR "${ROOT_DIR}/auto-win-msvc")
+    set(VALKEY_DIR "${ROOT_DIR}/valkey")
+else()
+    # CI layout: auto-win-msvc and valkey are siblings of build-repo
+    set(AUTO_WIN_MSVC_DIR "${ROOT_DIR}/../auto-win-msvc")
+    set(VALKEY_DIR "${ROOT_DIR}/../valkey")
+endif()
+
+file(READ "${AUTO_WIN_MSVC_DIR}/posix-sys-resource/src/posix-sys-resource.c" CONTENT)
 string(REPLACE "errno = EINVAL;\n      return -1;" "_setmaxstdio(8192);\n      return 0;" CONTENT "${CONTENT}")
-file(WRITE "auto-win-msvc/posix-sys-resource/src/posix-sys-resource.c" "${CONTENT}")
+file(WRITE "${AUTO_WIN_MSVC_DIR}/posix-sys-resource/src/posix-sys-resource.c" "${CONTENT}")
 
-file(READ "auto-win-msvc/posix-sockets/src/posix-sockets.c" CONTENT)
+file(READ "${AUTO_WIN_MSVC_DIR}/posix-sockets/src/posix-sockets.c" CONTENT)
 string(REPLACE "errno = EAGAIN;" "errno = EWOULDBLOCK;" CONTENT "${CONTENT}")
-file(WRITE "auto-win-msvc/posix-sockets/src/posix-sockets.c" "${CONTENT}")
+file(WRITE "${AUTO_WIN_MSVC_DIR}/posix-sockets/src/posix-sockets.c" "${CONTENT}")
 
-file(READ "auto-win-msvc/posix-core/src/posix_read_write.c" CONTENT)
+file(READ "${AUTO_WIN_MSVC_DIR}/posix-core/src/posix_read_write.c" CONTENT)
 string(REPLACE "errno = EAGAIN;" "errno = EWOULDBLOCK;" CONTENT "${CONTENT}")
 string(REPLACE "if (pathname[0] != '/' && pathname[0] != '\\\\' && pathname[1] != ':' &&\n      g_cloned_cwd[0] != 0) {" "if (pathname[0] != '/' && pathname[0] != '\\\\' && pathname[1] != ':') {\n    char cwd[1024];\n    GetCurrentDirectoryA(1024, cwd);\n#undef g_cloned_cwd\n#define g_cloned_cwd cwd" CONTENT "${CONTENT}")
-file(WRITE "auto-win-msvc/posix-core/src/posix_read_write.c" "${CONTENT}")
+file(WRITE "${AUTO_WIN_MSVC_DIR}/posix-core/src/posix_read_write.c" "${CONTENT}")
 
 
 
 
 
 # Dynamically fix patch for latest valkey
-file(READ "patches/0001-Windows-native-builds.patch" PATCH_CONTENT)
+file(READ "${ROOT_DIR}/patches/0001-Windows-native-builds.patch" PATCH_CONTENT)
 
 # 1. deps/libvalkey/CMakeLists.txt hunk
 string(REPLACE "@@ -47,7 +47,7 @@ set(valkey_sources\n     src/conn.c\n     src/crc16.c\n     src/dict.c\n-    src/net.c\n+    \${CMAKE_BINARY_DIR}/patched/deps/libvalkey/src/net.c\n     src/read.c\n     src/sockcompat.c\n     src/valkey.c" "@@ -46,7 +46,7 @@ set(valkey_sources\n     src/command.c\n     src/conn.c\n     src/crc16.c\n-    src/net.c\n+    \${CMAKE_BINARY_DIR}/patched/deps/libvalkey/src/net.c\n     src/read.c\n     src/sockcompat.c\n     src/valkey.c" PATCH_CONTENT "${PATCH_CONTENT}")
@@ -32,16 +45,16 @@ string(REGEX REPLACE "diff --git a/src/queues\\.c b/src/queues\\.c.*diff --git a
 # 4. Remove src/unit/CMakeLists.txt completely using REGEX
 string(REGEX REPLACE "diff --git a/src/unit/CMakeLists\\.txt b/src/unit/CMakeLists\\.txt.*" "" PATCH_CONTENT "${PATCH_CONTENT}")
 
-file(WRITE "patches/0001-Windows-native-builds.patch" "${PATCH_CONTENT}")
+file(WRITE "${ROOT_DIR}/patches/0001-Windows-native-builds.patch" "${PATCH_CONTENT}")
 
 # 5. Modify src/unit/CMakeLists.txt natively
-file(READ "valkey/src/unit/CMakeLists.txt" UNIT_CONTENT)
+file(READ "${VALKEY_DIR}/src/unit/CMakeLists.txt" UNIT_CONTENT)
 string(REPLACE "target_compile_options(valkeylib-gtest PRIVATE -Og -g -fno-lto)" "if(NOT MSVC)\n  target_compile_options(valkeylib-gtest PRIVATE -Og -g -fno-lto)\nendif()" UNIT_CONTENT "${UNIT_CONTENT}")
-file(WRITE "valkey/src/unit/CMakeLists.txt" "${UNIT_CONTENT}")
+file(WRITE "${VALKEY_DIR}/src/unit/CMakeLists.txt" "${UNIT_CONTENT}")
 
 # 6. Modify src/queues.c natively to remove inline
-file(READ "valkey/src/queues.c" QUEUES_CONTENT)
+file(READ "${VALKEY_DIR}/src/queues.c" QUEUES_CONTENT)
 string(REPLACE "inline void mpscInit" "void mpscInit" QUEUES_CONTENT "${QUEUES_CONTENT}")
 string(REPLACE "inline void spmcInit" "void spmcInit" QUEUES_CONTENT "${QUEUES_CONTENT}")
 string(REPLACE "inline void spscInit" "void spscInit" QUEUES_CONTENT "${QUEUES_CONTENT}")
-file(WRITE "valkey/src/queues.c" "${QUEUES_CONTENT}")
+file(WRITE "${VALKEY_DIR}/src/queues.c" "${QUEUES_CONTENT}")
